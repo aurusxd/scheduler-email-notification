@@ -93,7 +93,7 @@ tasknotify/
 │   │   ├── jobs.py
 │   │   └── scheduler_manager.py
 │   │
-│   ├── static/              # 🎨 Frontend
+│   ├── frontend/              # 🎨 Frontend
 │   │   ├── index.html
 │   │   ├── style.css
 │   │   └── app.js
