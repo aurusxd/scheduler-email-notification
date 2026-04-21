@@ -62,51 +62,48 @@ Email-сервис → Планировщик/БД — обновление фл
 ```
 
 ```text
-📂 Структура проекта (Модули)
-task_planner/
-├── docker-compose.yml       # 🐳 Поднятие PostgreSQL, Redis (для Celery)
-├── .env                     # 🔑 Переменные окружения (пароли, ключи, SMTP)
+tasknotify/
 ├── app/
-│   ├── __init__.py
-│   ├── main.py              # 🚀 Точка входа FastAPI
+│   ├── api/                 # 🌐 REST API роуты
+│   │   ├── v1/
+│   │   │   ├── endpoints/
+│   │   │   │   ├── auth.py
+│   │   │   │   └── tasks.py
+│   │   │   └── router.py
+│   │   └── dependencies.py
 │   │
-│   ├── api/                 # 🌐 Модуль 1: REST API (Роуты)
-│   │   ├── __init__.py
-│   │   ├── dependencies.py  # 🔐 Зависимости (текущий пользователь)
-│   │   └── v1/
-│   │       ├── endpoints/
-│   │       │   ├── auth.py      # /login, /register
-│   │       │   └── tasks.py     # CRUD для задач
-│   │       └── router.py
+│   ├── core/                # ⚙️ Конфигурация и безопасность
+│   │   ├── config.py
+│   │   └── security.py
 │   │
-│   ├── core/                # ⚙️ Модуль 2: Ядро и конфигурация
-│   │   ├── config.py        # Настройки (SMTP, БД, Secret keys)
-│   │   └── security.py      # Хэширование паролей, JWT
+│   ├── db/                  # 🗄️ База данных
+│   │   ├── models/
+│   │   │   ├── user.py
+│   │   │   └── task.py
+│   │   ├── base.py
+│   │   └── session.py
 │   │
-│   ├── db/                  # 🗄️ Модуль 3: Работа с Базой данных
-│   │   ├── base.py          # Базовый класс моделей
-│   │   ├── session.py       # Сессии SQLAlchemy
-│   │   └── models/
-│   │       ├── user.py
-│   │       └── task.py
-│   │
-│   ├── services/            # 🧩 Модуль 4: Бизнес-логика
-│   │   ├── email_service.py # Отправка писем через SMTP
-│   │   ├── task_service.py  # CRUD операции над задачами
-│   │   └── templates/       # 📨 Jinja2 шаблоны
+│   ├── services/            # 🧩 Бизнес-логика
+│   │   ├── email_service.py
+│   │   ├── task_service.py
+│   │   └── templates/
 │   │       └── deadline_email.html
 │   │
-│   ├── scheduler/           # ⏱️ Модуль 5: Планировщик
-│   │   ├── __init__.py
-│   │   ├── jobs.py          # Логика проверки дедлайнов
-│   │   └── run_scheduler.py # Запуск APScheduler / Celery Beat
+│   ├── scheduler/           # ⏱️ Планировщик
+│   │   ├── jobs.py
+│   │   └── scheduler_manager.py
 │   │
-│   └── static/              # 🎨 Модуль 6: Frontend
-│       ├── index.html
-│       └── style.css
-└── requirements.txt         # 📦 Зависимости Python```
-
-
-
-
-💡 Рекомендация по запуску:
+│   ├── static/              # 🎨 Frontend
+│   │   ├── index.html
+│   │   ├── style.css
+│   │   └── app.js
+│   │
+│   └── main.py              # 🚀 Точка входа
+│
+├── migrations/              # 📦 Alembic миграции
+├── tests/                   # 🧪 Тесты
+├── docker-compose.yml       # 🐳 Docker Compose
+├── Dockerfile               # 🐳 Docker образ           
+├── requirements.txt         # 📦 Зависимости
+└── pyproject.toml           # 📦 Зависимости для uv 
+```
