@@ -1,7 +1,13 @@
-from pydantic import BaseModel
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class DbConfig(BaseModel):
+class DbConfig(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
     DB_ECHO: bool = False
 
     POSTGRES_USER: str
