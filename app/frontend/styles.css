@@ -45,7 +45,7 @@ html, body {
 
 .dashboard-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -70,13 +70,6 @@ html, body {
 .stat-card strong {
   font-size: 22px;
   line-height: 1.1;
-}
-
-.quick-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
 }
 
 .auth-title {
@@ -138,6 +131,27 @@ html, body {
   color: var(--text);
   background: #1a2230;
   border-color: #2d3a50;
+}
+
+.status-filter-popover {
+  position: absolute;
+  width: 170px;
+  background: #151b25;
+  border: 1px solid #303749;
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  padding: 8px;
+  z-index: 18;
+}
+
+.status-filter-select {
+  width: 100%;
+  border: 1px solid #3b4459;
+  border-radius: 7px;
+  padding: 5px 8px;
+  background: #212836;
+  color: var(--text);
+  font-size: 12px;
 }
 
 .table-wrap {
@@ -203,12 +217,10 @@ html, body {
 
 .tasks-table td:nth-child(1) { width: 300px; }
 .tasks-table td:nth-child(2) { width: 150px; }
-.tasks-table td:nth-child(3) { width: 120px; }
-.tasks-table td:nth-child(4) { width: 250px; }
-.tasks-table td:nth-child(5) { width: 140px; }
-.tasks-table td:nth-child(6) { width: 180px; }
-.tasks-table td:nth-child(7) { width: 380px; max-width: 380px; overflow: hidden; text-overflow: ellipsis; }
-.tasks-table td:nth-child(8) { width: 170px; }
+.tasks-table td:nth-child(3) { width: 250px; }
+.tasks-table td:nth-child(4) { width: 140px; }
+.tasks-table td:nth-child(5) { width: 180px; }
+.tasks-table td:nth-child(6) { width: 380px; max-width: 380px; overflow: hidden; text-overflow: ellipsis; }
 
 .new-task-row td {
   background: #0b1119;

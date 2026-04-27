@@ -33,16 +33,20 @@
           <span>Просрочено</span>
           <strong id="overdueCount">0</strong>
         </article>
-        <article class="stat-card quick-actions">
-          <button class="btn" type="button">Экспорт</button>
-        </article>
       </section>
 
       <header class="views-bar">
-        <button class="view-tab active" type="button">Все задачи</button>
-        <button class="view-tab" type="button">По статусу</button>
-        <button class="view-tab" type="button">Мои задачи</button>
+        <button class="view-tab active" type="button" data-view="all">Все задачи</button>
+        <button id="statusViewTab" class="view-tab" type="button" data-view="status">По статусу</button>
       </header>
+
+      <section id="statusFilterPopover" class="status-filter-popover hidden" aria-label="Фильтр задач по статусу">
+        <select id="statusViewSelect" class="status-filter-select" size="3" aria-label="Фильтр по статусу">
+          <option value="Не начато">Не начато</option>
+          <option value="В процессе">В процессе</option>
+          <option value="Выполнено">Выполнено</option>
+        </select>
+      </section>
 
       <section class="table-wrap">
         <table class="tasks-table">
@@ -50,12 +54,10 @@
             <tr>
               <th>Название задачи</th>
               <th>Статус</th>
-              <th>Исполнитель</th>
               <th>Срок</th>
               <th>Приоритет</th>
               <th>Тип задачи</th>
               <th>Описание</th>
-              <th>Оценка</th>
             </tr>
           </thead>
           <tbody>
@@ -75,9 +77,6 @@
                 </select>
               </td>
               <td>
-                <input id="taskAssigneeInput" class="table-input hidden" type="text" placeholder="Исполнитель">
-              </td>
-              <td>
                 <button id="taskDeadlineTrigger" class="date-trigger hidden" type="button" data-start="" data-end="">Указать дедлайн</button>
               </td>
               <td>
@@ -93,14 +92,6 @@
               </td>
               <td>
                 <textarea id="taskDescriptionInput" class="table-input hidden" placeholder="Описание"></textarea>
-              </td>
-              <td>
-                <select id="taskEstimateInput" class="table-input hidden" aria-label="Оценка">
-                  <option value="" selected>Оценка…</option>
-                  <option value="Низкая">Низкая</option>
-                  <option value="Средняя">Средняя</option>
-                  <option value="Высокая">Высокая</option>
-                </select>
               </td>
             </tr>
           </tbody>

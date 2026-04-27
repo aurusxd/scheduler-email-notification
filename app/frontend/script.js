@@ -5,11 +5,9 @@ const taskStatusInput = document.getElementById("taskStatusInput");
 const taskStatusDisplay = document.getElementById("taskStatusDisplay");
 const taskTypeInput = document.getElementById("taskTypeInput");
 const taskTypeDisplay = document.getElementById("taskTypeDisplay");
-const taskAssigneeInput = document.getElementById("taskAssigneeInput");
 const taskDeadlineTrigger = document.getElementById("taskDeadlineTrigger");
 const taskPriorityInput = document.getElementById("taskPriorityInput");
 const taskDescriptionInput = document.getElementById("taskDescriptionInput");
-const taskEstimateInput = document.getElementById("taskEstimateInput");
 const tasksTodayCount = document.getElementById("tasksTodayCount");
 const inProgressCount = document.getElementById("inProgressCount");
 const overdueCount = document.getElementById("overdueCount");
@@ -22,6 +20,13 @@ let activeTrigger = null;
 const table = document.querySelector(".tasks-table");
 const tableHead = table?.querySelector("thead");
 const newTaskRow = tableBody?.querySelector(".new-task-row") || null;
+const viewTabs = Array.from(document.querySelectorAll(".view-tab"));
+const statusViewTab = document.getElementById("statusViewTab");
+const statusFilterPopover = document.getElementById("statusFilterPopover");
+const statusViewSelect = document.getElementById("statusViewSelect");
+let currentView = "all";
+let currentStatusFilter = normalizeText(statusViewSelect?.value || "Не начато");
+const STORAGE_KEY = "tasknotify_frontend_state_v1";
 
 function normalizeText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
@@ -70,12 +75,6 @@ function renderCellByColumnTitle(td, columnTitle, value) {
     return;
   }
 
-  if (columnTitle === "Оценка") {
-    const cls = v === "Высокая" ? "danger" : v === "Средняя" ? "amber" : "mint";
-    td.appendChild(createPill(v, cls));
-    return;
-  }
-
   td.textContent = v;
 }
 
@@ -83,6 +82,7 @@ function setCellValue(td, columnTitle, value) {
   td.dataset.value = normalizeText(value);
   renderCellByColumnTitle(td, columnTitle, td.dataset.value);
   if (columnTitle === "Статус") recomputeCounters();
+  persistState();
 }
 
 function getCellValue(td) {
@@ -149,29 +149,6 @@ function startInlineEdit(td, columnTitle) {
 
   td.replaceChildren();
 
-  if (columnTitle === "Исполнитель") {
-    const input = document.createElement("input");
-    input.type = "text";
-    input.className = "cell-input";
-    input.value = currentValue;
-    input.placeholder = "Указать исполнителя";
-    td.appendChild(input);
-    input.focus();
-    input.select();
-
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        input.blur();
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        cancel();
-      }
-    });
-    input.addEventListener("blur", () => commit(input.value));
-    return;
-  }
-
   if (columnTitle === "Описание") {
     const textarea = document.createElement("textarea");
     textarea.className = "cell-textarea";
@@ -204,9 +181,7 @@ function startInlineEdit(td, columnTitle) {
         ? ["", "Низкий", "Средний", "Высокий"]
         : columnTitle === "Тип задачи"
           ? ["", "Запрос фичи", "Доработка"]
-          : columnTitle === "Оценка"
-            ? ["", "Низкая", "Средняя", "Высокая"]
-            : [""];
+          : [""];
 
   for (const opt of options) {
     const optionEl = document.createElement("option");
@@ -236,10 +211,8 @@ function resetTaskForm() {
   taskNameInput.value = "";
   if (taskStatusInput) taskStatusInput.value = "Не начато";
   if (taskTypeInput) taskTypeInput.value = "";
-  if (taskAssigneeInput) taskAssigneeInput.value = "";
   if (taskPriorityInput) taskPriorityInput.value = "";
   if (taskDescriptionInput) taskDescriptionInput.value = "";
-  if (taskEstimateInput) taskEstimateInput.value = "";
   if (taskDeadlineTrigger) {
     taskDeadlineTrigger.dataset.start = "";
     taskDeadlineTrigger.dataset.end = "";
@@ -255,11 +228,9 @@ function syncAddButtonVisibility() {
   newTaskRow?.classList.toggle("is-compact", !hasTitle);
   taskStatusDisplay?.classList.toggle("hidden", !hasTitle);
   taskTypeDisplay?.classList.toggle("hidden", !hasTitle);
-  taskAssigneeInput?.classList.toggle("hidden", !hasTitle);
   taskDeadlineTrigger?.classList.toggle("hidden", !hasTitle);
   taskPriorityInput?.classList.toggle("hidden", !hasTitle);
   taskDescriptionInput?.classList.toggle("hidden", !hasTitle);
-  taskEstimateInput?.classList.toggle("hidden", !hasTitle);
 }
 
 function setDisplayValue(displayEl, value, emptyLabel) {
@@ -374,6 +345,152 @@ function closePopover() {
   activeTrigger = null;
 }
 
+function openStatusFilterPopover() {
+  if (!statusViewTab || !statusFilterPopover) return;
+  const tabRect = statusViewTab.getBoundingClientRect();
+  const workspaceRect = document.querySelector(".workspace")?.getBoundingClientRect();
+  const offsetLeft = workspaceRect ? tabRect.left - workspaceRect.left : tabRect.left;
+  const offsetTop = workspaceRect ? tabRect.bottom - workspaceRect.top : tabRect.bottom;
+  statusFilterPopover.style.left = `${offsetLeft}px`;
+  statusFilterPopover.style.top = `${offsetTop + 6}px`;
+  statusFilterPopover.classList.remove("hidden");
+}
+
+function closeStatusFilterPopover() {
+  statusFilterPopover?.classList.add("hidden");
+}
+
+function getRowsForStorage() {
+  if (!tableBody) return [];
+  const rows = Array.from(tableBody.querySelectorAll("tr")).filter((r) => !r.classList.contains("new-task-row"));
+  const statusIndex = getColumnIndexByTitle("Статус");
+  const deadlineIndex = getColumnIndexByTitle("Срок");
+  const priorityIndex = getColumnIndexByTitle("Приоритет");
+  const typeIndex = getColumnIndexByTitle("Тип задачи");
+  const descriptionIndex = getColumnIndexByTitle("Описание");
+
+  return rows.map((row) => {
+    const title = normalizeText(row.querySelector(".task-title-wrap span")?.textContent || "");
+    const status = normalizeText(getCellValue(statusIndex >= 0 ? row.children[statusIndex] : null));
+    const deadlineTd = deadlineIndex >= 0 ? row.children[deadlineIndex] : null;
+    const trigger = deadlineTd?.querySelector?.(".date-trigger") || null;
+    const priority = normalizeText(getCellValue(priorityIndex >= 0 ? row.children[priorityIndex] : null));
+    const taskType = normalizeText(getCellValue(typeIndex >= 0 ? row.children[typeIndex] : null));
+    const description = normalizeText(getCellValue(descriptionIndex >= 0 ? row.children[descriptionIndex] : null));
+
+    return {
+      title,
+      status,
+      deadlineStart: trigger?.dataset?.start || "",
+      deadlineEnd: trigger?.dataset?.end || "",
+      priority,
+      taskType,
+      description,
+    };
+  });
+}
+
+function persistState() {
+  try {
+    const payload = {
+      view: currentView,
+      statusFilter: currentStatusFilter,
+      rows: getRowsForStorage(),
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch (_) {
+    // Ignore storage errors (quota/private mode).
+  }
+}
+
+function createTaskRow(taskData) {
+  const data = {
+    title: normalizeText(taskData?.title || ""),
+    status: normalizeText(taskData?.status || "") || "Не начато",
+    deadlineStart: taskData?.deadlineStart || "",
+    deadlineEnd: taskData?.deadlineEnd || "",
+    priority: normalizeText(taskData?.priority || ""),
+    taskType: normalizeText(taskData?.taskType || ""),
+    description: normalizeText(taskData?.description || ""),
+  };
+  if (!data.title) return null;
+
+  const row = document.createElement("tr");
+  row.dataset.userAdded = "true";
+
+  const titleCell = document.createElement("td");
+  const titleWrap = document.createElement("div");
+  titleWrap.className = "task-title-wrap";
+  const titleText = document.createElement("span");
+  titleText.textContent = data.title;
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "btn btn-danger btn-inline-delete delete-task-btn";
+  deleteBtn.textContent = "Удалить";
+  titleWrap.appendChild(titleText);
+  titleWrap.appendChild(deleteBtn);
+  titleCell.appendChild(titleWrap);
+  row.appendChild(titleCell);
+
+  const statusCell = document.createElement("td");
+  setCellValue(statusCell, "Статус", data.status);
+  row.appendChild(statusCell);
+
+  const deadlineCell = document.createElement("td");
+  const deadlineBtn = document.createElement("button");
+  deadlineBtn.className = "date-trigger";
+  deadlineBtn.type = "button";
+  deadlineBtn.dataset.start = data.deadlineStart;
+  deadlineBtn.dataset.end = data.deadlineEnd;
+  deadlineBtn.textContent = formatDateRange(data.deadlineStart, data.deadlineEnd);
+  deadlineCell.appendChild(deadlineBtn);
+  row.appendChild(deadlineCell);
+
+  const priorityCell = document.createElement("td");
+  setCellValue(priorityCell, "Приоритет", data.priority);
+  row.appendChild(priorityCell);
+
+  const typeCell = document.createElement("td");
+  setCellValue(typeCell, "Тип задачи", data.taskType);
+  row.appendChild(typeCell);
+
+  const descriptionCell = document.createElement("td");
+  setCellValue(descriptionCell, "Описание", data.description);
+  row.appendChild(descriptionCell);
+
+  return row;
+}
+
+function loadPersistedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return;
+
+    const storedRows = Array.isArray(parsed.rows) ? parsed.rows : [];
+    const existingRows = Array.from(tableBody?.querySelectorAll("tr") || []).filter((r) => !r.classList.contains("new-task-row"));
+    existingRows.forEach((row) => row.remove());
+
+    for (const item of storedRows) {
+      const row = createTaskRow(item);
+      if (!row) continue;
+      const insertBeforeNode = tableBody.querySelector(".new-task-row");
+      tableBody.insertBefore(row, insertBeforeNode || null);
+    }
+
+    const storedStatus = normalizeText(parsed.statusFilter || "");
+    const allowedStatuses = new Set(["Не начато", "В процессе", "Выполнено"]);
+    currentStatusFilter = allowedStatuses.has(storedStatus) ? storedStatus : "Не начато";
+    if (statusViewSelect) statusViewSelect.value = currentStatusFilter;
+
+    const storedView = normalizeText(parsed.view || "all");
+    currentView = storedView === "status" ? "status" : "all";
+  } catch (_) {
+    // Ignore parse/storage errors.
+  }
+}
+
 tableBody.querySelectorAll(".date-trigger").forEach((trigger) => {
   trigger.textContent = formatDateRange(trigger.dataset.start, trigger.dataset.end);
 });
@@ -384,7 +501,7 @@ tableBody.querySelectorAll(".date-trigger").forEach((trigger) => {
   const headers = Array.from(tableHead?.querySelectorAll("th") || []);
   const headerTitles = headers.map((th) => getCellText(th));
 
-  const editable = new Set(["Статус", "Исполнитель", "Приоритет", "Тип задачи", "Описание", "Оценка"]);
+  const editable = new Set(["Статус", "Приоритет", "Тип задачи", "Описание"]);
   const rows = Array.from(tableBody.querySelectorAll("tr")).filter((r) => !r.classList.contains("new-task-row"));
 
   for (const row of rows) {
@@ -399,7 +516,65 @@ tableBody.querySelectorAll(".date-trigger").forEach((trigger) => {
   }
 })();
 
+loadPersistedState();
 recomputeCounters();
+applyViewFilter();
+setActiveView(currentView);
+
+function getRowStatus(row) {
+  const statusIndex = getColumnIndexByTitle("Статус");
+  if (statusIndex < 0) return "";
+  return normalizeText(getCellValue(row.children[statusIndex]));
+}
+
+function applyViewFilter() {
+  if (!tableBody) return;
+  const rows = Array.from(tableBody.querySelectorAll("tr")).filter((r) => !r.classList.contains("new-task-row"));
+
+  for (const row of rows) {
+    let visible = true;
+    const rowStatus = getRowStatus(row);
+
+    if (currentView === "status") {
+      visible = rowStatus === currentStatusFilter;
+    }
+
+    row.classList.toggle("hidden", !visible);
+  }
+}
+
+function setActiveView(nextView) {
+  currentView = nextView;
+  for (const tab of viewTabs) {
+    tab.classList.toggle("active", tab.dataset.view === nextView);
+  }
+  if (nextView === "status") {
+    openStatusFilterPopover();
+  } else {
+    closeStatusFilterPopover();
+  }
+  applyViewFilter();
+  persistState();
+}
+
+viewTabs.forEach((tab) => {
+  tab.addEventListener("click", () => {
+    const nextView = normalizeText(tab.dataset.view) || "all";
+    setActiveView(nextView);
+  });
+});
+
+statusViewSelect?.addEventListener("change", () => {
+  currentStatusFilter = normalizeText(statusViewSelect.value || "Не начато");
+  if (currentView !== "status") {
+    setActiveView("status");
+    closeStatusFilterPopover();
+    return;
+  }
+  applyViewFilter();
+  persistState();
+  closeStatusFilterPopover();
+});
 
 tableBody.addEventListener("click", (event) => {
   const deleteBtn = event.target.closest(".delete-task-btn");
@@ -409,6 +584,7 @@ tableBody.addEventListener("click", (event) => {
       if (activeTrigger && row.contains(activeTrigger)) closePopover();
       row.remove();
       recomputeCounters();
+      persistState();
     }
     return;
   }
@@ -442,6 +618,7 @@ saveBtn.addEventListener("click", () => {
   activeTrigger.textContent = formatDateRange(startInput.value, endInput.value);
   closePopover();
   recomputeCounters();
+  persistState();
 });
 
 closeBtn.addEventListener("click", closePopover);
@@ -456,68 +633,28 @@ addTaskBtn.addEventListener("click", () => {
 
   const selectedStatus = normalizeText(taskStatusInput?.value || "") || "Не начато";
   const typedTaskType = normalizeText(taskTypeInput?.value || "");
-  const typedAssignee = normalizeText(taskAssigneeInput?.value || "");
   const selectedPriority = normalizeText(taskPriorityInput?.value || "");
   const typedDescription = normalizeText(taskDescriptionInput?.value || "");
-  const selectedEstimate = normalizeText(taskEstimateInput?.value || "");
   const deadlineStart = taskDeadlineTrigger?.dataset?.start || "";
   const deadlineEnd = taskDeadlineTrigger?.dataset?.end || "";
 
-  const row = document.createElement("tr");
-  row.dataset.userAdded = "true";
-
-  const titleCell = document.createElement("td");
-  const titleWrap = document.createElement("div");
-  titleWrap.className = "task-title-wrap";
-  const titleText = document.createElement("span");
-  titleText.textContent = title;
-  const deleteBtn = document.createElement("button");
-  deleteBtn.type = "button";
-  deleteBtn.className = "btn btn-danger btn-inline-delete delete-task-btn";
-  deleteBtn.textContent = "Удалить";
-  titleWrap.appendChild(titleText);
-  titleWrap.appendChild(deleteBtn);
-  titleCell.appendChild(titleWrap);
-  row.appendChild(titleCell);
-
-  const statusCell = document.createElement("td");
-  setCellValue(statusCell, "Статус", selectedStatus);
-  row.appendChild(statusCell);
-
-  const assigneeCell = document.createElement("td");
-  setCellValue(assigneeCell, "Исполнитель", typedAssignee);
-  row.appendChild(assigneeCell);
-
-  const deadlineCell = document.createElement("td");
-  const deadlineBtn = document.createElement("button");
-  deadlineBtn.className = "date-trigger";
-  deadlineBtn.type = "button";
-  deadlineBtn.dataset.start = deadlineStart;
-  deadlineBtn.dataset.end = deadlineEnd;
-  deadlineBtn.textContent = formatDateRange(deadlineStart, deadlineEnd);
-  deadlineCell.appendChild(deadlineBtn);
-  row.appendChild(deadlineCell);
-
-  const priorityCell = document.createElement("td");
-  setCellValue(priorityCell, "Приоритет", selectedPriority);
-  row.appendChild(priorityCell);
-
-  const typeCell = document.createElement("td");
-  setCellValue(typeCell, "Тип задачи", typedTaskType);
-  row.appendChild(typeCell);
-
-  const descriptionCell = document.createElement("td");
-  setCellValue(descriptionCell, "Описание", typedDescription);
-  row.appendChild(descriptionCell);
-
-  const estimateCell = document.createElement("td");
-  setCellValue(estimateCell, "Оценка", selectedEstimate);
-  row.appendChild(estimateCell);
+  const row = createTaskRow({
+    title,
+    status: selectedStatus,
+    deadlineStart,
+    deadlineEnd,
+    priority: selectedPriority,
+    taskType: typedTaskType,
+    description: typedDescription,
+  });
+  if (!row) return;
 
   const insertBeforeNode = tableBody.querySelector(".new-task-row");
   tableBody.insertBefore(row, insertBeforeNode || null);
 
   recomputeCounters();
+  applyViewFilter();
+  persistState();
 
   resetTaskForm();
   taskNameInput.focus();
@@ -526,6 +663,13 @@ addTaskBtn.addEventListener("click", () => {
 document.addEventListener("click", (event) => {
   if (popover.classList.contains("hidden")) return;
   if (!popover.contains(event.target)) closePopover();
+});
+
+document.addEventListener("click", (event) => {
+  if (statusFilterPopover?.classList.contains("hidden")) return;
+  if (statusFilterPopover.contains(event.target)) return;
+  if (statusViewTab?.contains(event.target)) return;
+  closeStatusFilterPopover();
 });
 
 taskNameInput.addEventListener("keydown", (event) => {
