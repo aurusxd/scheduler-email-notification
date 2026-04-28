@@ -27,9 +27,89 @@ const statusViewSelect = document.getElementById("statusViewSelect");
 let currentView = "all";
 let currentStatusFilter = normalizeText(statusViewSelect?.value || "Не начато");
 const STORAGE_KEY = "tasknotify_frontend_state_v1";
+const AUTH_STORAGE_KEY = "tasknotify_auth_user_v1";
+const API_BASE_URL = window.localStorage.getItem("tasknotify_api_base_url") || "http://127.0.0.1:8000";
+const authHeaderTitle = document.getElementById("authHeaderTitle");
+const authHeaderSubtitle = document.getElementById("authHeaderSubtitle");
+const goAuthLink = document.getElementById("goAuthLink");
+const logoutBtn = document.getElementById("logoutBtn");
+let currentUser = null;
 
 function normalizeText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
+}
+
+function showPageFeedback(message) {
+  if (!authHeaderSubtitle) return;
+  const text = normalizeText(message);
+  if (!text) return;
+  authHeaderSubtitle.textContent = text;
+}
+
+function clearAuthUser() {
+  try {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  } catch (_) {
+    // Ignore storage errors.
+  }
+}
+
+function loadAuthUser() {
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    if (!Number.isInteger(parsed.id)) return null;
+    return {
+      id: parsed.id,
+      username: normalizeText(parsed.username),
+      email_address: normalizeText(parsed.email_address),
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+function updateAuthUi() {
+  const isLoggedIn = Boolean(currentUser?.id);
+  goAuthLink?.classList.toggle("hidden", isLoggedIn);
+  logoutBtn?.classList.toggle("hidden", !isLoggedIn);
+  if (authHeaderTitle) {
+    authHeaderTitle.textContent = isLoggedIn ? `Пользователь: ${currentUser.username}` : "Профиль";
+  }
+  if (authHeaderSubtitle) {
+    authHeaderSubtitle.textContent = isLoggedIn
+      ? `ID: ${currentUser.id}. Этот user_id будет отправлен в БД при создании задачи.`
+      : "Авторизуйтесь для работы с задачами на странице входа";
+  }
+}
+
+async function createTaskInBackend(taskData) {
+  if (!currentUser?.id) return;
+  const deadline = taskData.deadlineEnd || taskData.deadlineStart;
+  if (!deadline) return;
+  const payload = {
+    name: taskData.title,
+    description: taskData.description || null,
+    status: taskData.status || "Не начато",
+    priority: taskData.priority || "Низкий",
+    type: taskData.taskType || "Общая",
+    start_date: taskData.deadlineStart || null,
+    end_date: `${deadline}T00:00:00`,
+    user_id: currentUser.id,
+  };
+
+  const response = await fetch(`${API_BASE_URL}/api/tasks`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const detail = normalizeText(data?.detail || "Ошибка создания задачи в БД");
+    throw new Error(detail);
+  }
 }
 
 function getCellText(cell) {
@@ -297,6 +377,17 @@ taskTypeInput?.addEventListener("blur", () => {
 // Ensure initial state for add-row editors.
 syncNewTaskRowEditors();
 syncAddButtonVisibility();
+currentUser = loadAuthUser();
+if (!currentUser?.id) {
+  window.location.href = "./auth.html";
+}
+updateAuthUi();
+
+logoutBtn?.addEventListener("click", () => {
+  currentUser = null;
+  clearAuthUser();
+  window.location.href = "./auth.html";
+});
 
 function incrementCount(counterElement) {
   if (!counterElement) return;
@@ -623,7 +714,12 @@ saveBtn.addEventListener("click", () => {
 
 closeBtn.addEventListener("click", closePopover);
 
-addTaskBtn.addEventListener("click", () => {
+addTaskBtn.addEventListener("click", async () => {
+  if (!currentUser?.id) {
+    window.location.href = "./auth.html";
+    return;
+  }
+
   const title = taskNameInput.value.trim();
   if (!title) {
     taskNameInput.focus();
@@ -637,8 +733,7 @@ addTaskBtn.addEventListener("click", () => {
   const typedDescription = normalizeText(taskDescriptionInput?.value || "");
   const deadlineStart = taskDeadlineTrigger?.dataset?.start || "";
   const deadlineEnd = taskDeadlineTrigger?.dataset?.end || "";
-
-  const row = createTaskRow({
+  const taskData = {
     title,
     status: selectedStatus,
     deadlineStart,
@@ -646,7 +741,9 @@ addTaskBtn.addEventListener("click", () => {
     priority: selectedPriority,
     taskType: typedTaskType,
     description: typedDescription,
-  });
+  };
+
+  const row = createTaskRow(taskData);
   if (!row) return;
 
   const insertBeforeNode = tableBody.querySelector(".new-task-row");
@@ -658,6 +755,13 @@ addTaskBtn.addEventListener("click", () => {
 
   resetTaskForm();
   taskNameInput.focus();
+
+  try {
+    await createTaskInBackend(taskData);
+    showPageFeedback("Задача создана и сохранена в БД");
+  } catch (error) {
+    showPageFeedback(`Локально добавлено, но не сохранено в БД: ${error.message || "ошибка"}`);
+  }
 });
 
 document.addEventListener("click", (event) => {

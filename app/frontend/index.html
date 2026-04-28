@@ -11,12 +11,12 @@
     <main class="main-content">
       <div class="auth-topbar">
         <div class="auth-title">
-          <strong>Профиль</strong>
-          <span>Авторизуйтесь для работы с задачами</span>
+          <strong id="authHeaderTitle">Профиль</strong>
+          <span id="authHeaderSubtitle">Загрузка профиля...</span>
         </div>
         <div class="auth-actions">
-          <button class="btn btn-primary" type="button">Вход</button>
-          <button class="btn" type="button">Регистрация</button>
+          <a class="btn hidden" id="goAuthLink" href="./auth.html">Вход / регистрация</a>
+          <button id="logoutBtn" class="btn btn-danger" type="button">Выйти</button>
         </div>
       </div>
 

@@ -91,6 +91,56 @@ html, body {
   gap: 8px;
 }
 
+.auth-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.auth-switch {
+  display: inline-flex;
+  border: 1px solid #2d3a50;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.auth-switch-btn {
+  border: none;
+  background: #0f1420;
+  color: var(--muted);
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.auth-switch-btn.active {
+  background: #1f2a3c;
+  color: var(--text);
+}
+
+.auth-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 220px));
+  gap: 10px;
+  align-items: end;
+}
+
+.auth-feedback {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.auth-feedback.error {
+  color: #ffb8b8;
+}
+
+.auth-feedback.success {
+  color: #9fe6c2;
+}
+
 .btn {
   border-radius: 8px;
   border: 1px solid #394257;
@@ -408,6 +458,10 @@ html, body {
 
   .dashboard-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .auth-form {
+    grid-template-columns: 1fr;
   }
 
   .inline-date-inputs {
