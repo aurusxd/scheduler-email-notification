@@ -6,54 +6,36 @@
   <title>TaskNotify - Вход</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
-<body>
-  <div class="workspace">
-    <main class="main-content">
-      <div class="auth-topbar">
-        <div class="auth-title">
-          <strong>Авторизация</strong>
-          <span>Войдите или зарегистрируйтесь, чтобы перейти к задачам</span>
-        </div>
-        <div class="auth-actions">
-          <a class="btn" href="./index.html">На главную</a>
-        </div>
-      </div>
+<body class="auth-page" data-auth-mode="login">
+  <main class="auth-shell">
+    <section class="auth-hero">
+      <h1>TaskNotify</h1>
+      <p>Управляй дедлайнами и получай email-напоминания без пропусков.</p>
+    </section>
 
-      <section id="authPanel" class="auth-panel" aria-label="Форма входа и регистрации">
-        <div class="auth-switch">
-          <button id="loginTabBtn" class="auth-switch-btn active" type="button">Вход</button>
-          <button id="registerTabBtn" class="auth-switch-btn" type="button">Регистрация</button>
-        </div>
-        <form id="loginForm" class="auth-form">
-          <label class="field">
-            <span>Имя пользователя</span>
-            <input id="loginUsernameInput" type="text" required>
-          </label>
-          <label class="field">
-            <span>Пароль</span>
-            <input id="loginPasswordInput" type="password" required>
-          </label>
-          <button class="btn btn-primary" type="submit">Войти</button>
-        </form>
-        <form id="registerForm" class="auth-form hidden">
-          <label class="field">
-            <span>Имя пользователя</span>
-            <input id="registerUsernameInput" type="text" required>
-          </label>
-          <label class="field">
-            <span>Email</span>
-            <input id="registerEmailInput" type="email" required>
-          </label>
-          <label class="field">
-            <span>Пароль</span>
-            <input id="registerPasswordInput" type="password" required>
-          </label>
-          <button class="btn btn-primary" type="submit">Зарегистрироваться</button>
-        </form>
-        <p id="authFeedback" class="auth-feedback hidden"></p>
-      </section>
-    </main>
-  </div>
+    <section class="auth-card" aria-label="Вход в аккаунт">
+      <h2>Вход в аккаунт</h2>
+      <p class="auth-subtitle">Рады видеть снова</p>
+
+      <form id="authForm" class="auth-form-vertical">
+        <label class="field">
+          <span>Имя пользователя</span>
+          <input id="usernameInput" type="text" placeholder="например, nikit" required>
+        </label>
+        <label class="field">
+          <span>Пароль</span>
+          <input id="passwordInput" type="password" placeholder="Введите пароль" required>
+        </label>
+        <button class="btn btn-primary btn-auth-submit" type="submit">Войти</button>
+      </form>
+
+      <p id="authFeedback" class="auth-feedback hidden"></p>
+      <p class="auth-switch-text">
+        Нет аккаунта?
+        <a href="./register.html">Создать аккаунт</a>
+      </p>
+    </section>
+  </main>
 
   <script type="module" src="./auth.js"></script>
 </body>

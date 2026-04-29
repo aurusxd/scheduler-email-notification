@@ -1,15 +1,11 @@
 const AUTH_STORAGE_KEY = "tasknotify_auth_user_v1";
-const loginTabBtn = document.getElementById("loginTabBtn");
-const registerTabBtn = document.getElementById("registerTabBtn");
-const loginForm = document.getElementById("loginForm");
-const registerForm = document.getElementById("registerForm");
-const loginUsernameInput = document.getElementById("loginUsernameInput");
-const loginPasswordInput = document.getElementById("loginPasswordInput");
-const registerUsernameInput = document.getElementById("registerUsernameInput");
-const registerEmailInput = document.getElementById("registerEmailInput");
-const registerPasswordInput = document.getElementById("registerPasswordInput");
+const authForm = document.getElementById("authForm");
+const usernameInput = document.getElementById("usernameInput");
+const emailInput = document.getElementById("emailInput");
+const passwordInput = document.getElementById("passwordInput");
 const authFeedback = document.getElementById("authFeedback");
 const API_BASE_URL = window.localStorage.getItem("tasknotify_api_base_url") || "http://127.0.0.1:8000";
+const authMode = document.body.dataset.authMode || "login";
 
 function normalizeText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
@@ -46,15 +42,6 @@ function loadAuthUser() {
   }
 }
 
-function setAuthTab(nextTab) {
-  const isLogin = nextTab === "login";
-  loginTabBtn?.classList.toggle("active", isLogin);
-  registerTabBtn?.classList.toggle("active", !isLogin);
-  loginForm?.classList.toggle("hidden", !isLogin);
-  registerForm?.classList.toggle("hidden", isLogin);
-  showAuthFeedback("");
-}
-
 async function authRequest(path, payload) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
@@ -68,44 +55,34 @@ async function authRequest(path, payload) {
   return data;
 }
 
-async function submitLogin(event) {
+async function submitAuth(event) {
   event.preventDefault();
-  const username = normalizeText(loginUsernameInput?.value);
-  const password = loginPasswordInput?.value || "";
+  const username = normalizeText(usernameInput?.value);
+  const password = passwordInput?.value || "";
+  const email_address = normalizeText(emailInput?.value);
+
   if (!username || !password) {
     showAuthFeedback("Введите логин и пароль", "error");
     return;
   }
 
-  try {
-    const data = await authRequest("/api/auth/login", { username, password });
-    saveAuthUser(data.user);
-    window.location.href = "./index.html";
-  } catch (error) {
-    showAuthFeedback(error.message || "Ошибка входа", "error");
-  }
-}
-
-async function submitRegister(event) {
-  event.preventDefault();
-  const username = normalizeText(registerUsernameInput?.value);
-  const email_address = normalizeText(registerEmailInput?.value);
-  const password = registerPasswordInput?.value || "";
-  if (!username || !email_address || !password) {
-    showAuthFeedback("Заполните все поля регистрации", "error");
+  if (authMode === "register" && !email_address) {
+    showAuthFeedback("Введите email для регистрации", "error");
     return;
   }
 
   try {
-    const data = await authRequest("/api/auth/register", {
-      username,
-      email_address,
-      password,
-    });
+    const data =
+      authMode === "register"
+        ? await authRequest("/api/auth/register", { username, email_address, password })
+        : await authRequest("/api/auth/login", { username, password });
     saveAuthUser(data.user);
     window.location.href = "./index.html";
   } catch (error) {
-    showAuthFeedback(error.message || "Ошибка регистрации", "error");
+    showAuthFeedback(
+      error.message || (authMode === "register" ? "Ошибка регистрации" : "Ошибка входа"),
+      "error"
+    );
   }
 }
 
@@ -114,8 +91,4 @@ if (existingUser?.id) {
   window.location.href = "./index.html";
 }
 
-setAuthTab("login");
-loginTabBtn?.addEventListener("click", () => setAuthTab("login"));
-registerTabBtn?.addEventListener("click", () => setAuthTab("register"));
-loginForm?.addEventListener("submit", submitLogin);
-registerForm?.addEventListener("submit", submitRegister);
+authForm?.addEventListener("submit", submitAuth);
