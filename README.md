@@ -68,5 +68,5 @@ SCHEDULER_TIMEZONE=Asia/Bangkok
 uv sync
 docker-compose up -d
 uv run alembic upgrade head
-uv run main.py
+uv run uvicorn main:app --reload
 ```
