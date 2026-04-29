@@ -37,7 +37,7 @@ export function updateAuthUi({ currentUser, authHeaderTitle, authHeaderSubtitle,
 
   if (authHeaderSubtitle) {
     authHeaderSubtitle.textContent = isLoggedIn
-      ? `ID: ${currentUser.id}. Этот user_id будет отправлен в БД при создании задачи.`
+      ? `ID: ${currentUser.id}.`
       : "Авторизуйтесь для работы с задачами на странице входа";
   }
 }
